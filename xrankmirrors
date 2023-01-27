@@ -1,12 +1,13 @@
-#!/usr/bin/env -S bash
+#!/usr/bin/bash
 ## credits to https://paste.sh/1QS8Tgf6#aHTfRy1dOG4rcA5x_6kauwq3
 
-pkg=current/xbps-0.59.1_6.x86_64.xbps
-file="${XDG_CACHE_HOME:-$HOME/.cache}/${0##*/}-results"
+pkg=current/$(xbps-query -R -S 2048-qt | grep pkgver | cut -d' ' -f2).x86_64.xbps
+file="${XDG_CACHE_HOME:-$HOME/.cache}/xrankmirrors-void-results"
+cereus_file="${XDG_CACHE_HOME:-$HOME/.cache}/xrankmirrors-cereus-results"
+cereus_pkg="cereus-extra/$(xbps-uhelper arch)/$(xbps-query -R -S xidlehook | grep pkgver | cut -d' ' -f2).$(xbps-uhelper arch).xbps"
 
-mirrormsg() { printf '%s\n' "getting mirrors from void-docs..." ; }
-
-get() {
+get_void() {
+    printf '%s\n' "getting mirrors from void-docs..."
 	rm "$file"
 	while read -r syntax mirror _ loc; do
 		case $syntax in
@@ -19,7 +20,7 @@ get() {
 						loc="${loc% |}"
 						loc="${loc%%,*}" 
 						[ -n "${REGION}" ] && {
-							[ "${REGION}" = get ] && printf '%s\n' "$loc" && continue 
+							[ "${REGION}" = get_void ] && printf '%s\n' "$loc" && continue 
 							[ ! "${loc%%:*}" = "${REGION}" ] && continue
 						} 
 						printf '%s\n' "$mirror"
@@ -34,22 +35,91 @@ get() {
 	#echo "finished writing results of mirrors to $file"
 }
 
-format() {
-	sort -t, -nrk3 < "$file" | numfmt -d , --field 3 --to=iec-i --suffix=B/s | sed '1s/^/mirror,location,dlspeed,connect\n/' | column -s, -t
+get_cereus() {
+    printf '%s\n' "getting mirrors from cereus-docs..."
+	rm -v "$cereus_file"
+
+	while read -r syntax mirror_cereus _ loc; do
+		case $syntax in
+			\|)
+				case $mirror_cereus in
+					Repository) ;;
+					*)
+						mirror_cereus="${mirror_cereus#<}"
+						mirror_cereus="${mirror_cereus%>}"
+						loc="${loc% |}"
+						loc="${loc%%,*}" 
+						[ -n "${REGION}" ] && {
+							[ "${REGION}" = get_cereus ] && printf '%s\n' "$loc" && continue 
+							[ ! "${loc%%:*}" = "${REGION}" ] && continue
+						} 
+						printf '%s\n' "$mirror_cereus"
+						dlspeed="$(curl -Y 1048576 -# -w "%{speed_download}" "$mirror_cereus/$cereus_pkg" -o/dev/null)"
+						connect=$(printf "%.2fs" "$(curl --connect-timeout 2 -sw "%{time_appconnect}" "$mirror_cereus" -o/dev/null)")
+						echo "${mirror_cereus},${loc},${dlspeed},${connect}" >> "$cereus_file"
+					;;
+				esac
+			;;
+		esac
+	done <<< "$(curl -# https://raw.githubusercontent.com/CereusLinuxProject/xrankmirrors/main/mirrorlist.md)"
+	#echo "finished writing results of mirrors to $file"
 }
 
+get_fastests() {
+        echo ""
+        echo "Fastest mirrors:"
+        cereus_fastest=$(echo "$cereus_list" | sed -n '2p' | cut -d',' -f2 | cut -d' ' -f1)
+        void_fastest=$(echo "$void_list" | sed -n '2p' | cut -d',' -f2 | cut -d' ' -f1)
+        echo "Cereus: $cereus_fastest
+Void: $void_fastest"
+}
+
+format() {
+	void_list=$(sort -t, -nrk3 < "$file" | numfmt -d , --field 3 --to=iec-i --suffix=B/s | sed '1s/^/mirror,location,dlspeed,connect\n/' | column -s, -t)
+    cereus_list=$(sort -t, -nrk3 < "$cereus_file" | numfmt -d , --field 3 --to=iec-i --suffix=B/s | sed '1s/^/mirror,location,dlspeed,connect\n/' | column -s, -t)
+
+    echo "Void Linux mirrors"
+    echo "==================================================="
+    echo "$void_list"
+    echo ""
+    
+    echo "Cereus Linux mirrors"
+    echo "==================================================="
+    echo "$cereus_list"
+    get_fastests
+}
+
+set_fastests() {
+    format
+    if [ -e /usr/bin/doas ]; then
+        su_cmd=doas
+    elif [ -e /usr/bin/sudo ]; then
+        su_cmd=sudo
+    fi
+
+    $su_cmd mkdir -p /etc/xbps.d/
+    $su_cmd cp /usr/share/xbps.d/*repository*.conf /etc/xbps.d/
+    $su_cmd cp /usr/share/xbps.d/*cereus*.conf /etc/xbps.d/
+    $su_cmd sed -i 's|https://repo-default.voidlinux.org|'"$void_fastest"'|g' /etc/xbps.d/*repository*.conf 
+    $su_cmd sed -i 's|https://sourceforge.net/projects/cereus-linux/files/repos|'"$cereus_fastest"'|g' /etc/xbps.d/*cereus*.conf 
+}
+
+
 case "$1" in
-	-g) mirrormsg && get ;;
+	-g) get_void ;;
+    -c) get_cereus ;;
 	-f) format ;;
-	-r) REGION="$2"; mirrormsg && get ;;
+    -s) set_fastests ;;
+	-r) REGION="$2" ;;
 	-p) REGION="get"; mirrormsg && get | sed '1s/^/region: location\n/' | column -s: -t ;;
 	*) cat <<EOF 
-usage: ${0##*/} [-g] [-f]
-  -g   get results and write to file
+usage: ${0##*/} [-c] [-g] [-f]
+  -c   Get Cereus results and write to file
+  -g   Get Void results and write to file
   -f   format results file 
   -r   get results from specific region if available
   -p   print available regions and locations
 
-file: $file
+files: $file $cereus_file
 EOF
 esac

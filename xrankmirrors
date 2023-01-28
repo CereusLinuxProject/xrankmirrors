@@ -120,7 +120,7 @@ xrankfzf() {
 
     run_yesno=$(echo -e "Yes\nNo" | fzf --layout=reverse --border --border-label="Do you want to do the mirrors test?")
 
-    if [ $run_yesno = "Yes" ] || ; then
+    if [ $run_yesno = "Yes" ]; then
         run_ranks
     fi
     

@@ -150,6 +150,15 @@ change_mirror() {
         sed -i 's|https://repo-default.voidlinux.org/|'"$void_mirror"'|g' /etc/xbps.d/*repository*.conf     
     fi
 
+    # Test if selected mirror has debug repository
+    if [ -e /usr/share/xbps.d/20-repository-debug.conf ]; then
+        debug_repo=$(cat /etc/xbps.d/20-repository-debug.conf | cut -d"=" -f2)
+        if ! (wget --spider "$debug_repo/$arch-repodata" 2>/dev/null); then
+            echo "Selected mirror does not have debug repository, falling back to default"
+             cp /usr/share/xbps.d/20-repository-debug.conf /etc/xbps.d/
+        fi
+    fi
+
     xbps-install -S
 }
 

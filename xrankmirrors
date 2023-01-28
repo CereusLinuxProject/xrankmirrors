@@ -142,12 +142,12 @@ change_mirror() {
 
     if [ -n "$cereus_mirror" ]; then
         cp /usr/share/xbps.d/*cereus*.conf /etc/xbps.d/
-        sed -i 's|https://sourceforge.net/projects/cereus-linux/files/repos|'"$cereus_mirror"'|g' /etc/xbps.d/*cereus*.conf
+        sed -i 's|https://sourceforge.net/projects/cereus-linux/files/repos/|'"$cereus_mirror"'|g' /etc/xbps.d/*cereus*.conf
     fi
 
     if [ -n "$void_mirror" ]; then
         cp /usr/share/xbps.d/*repository*.conf /etc/xbps.d/
-        sed -i 's|https://repo-default.voidlinux.org|'"$void_mirror"'|g' /etc/xbps.d/*repository*.conf     
+        sed -i 's|https://repo-default.voidlinux.org/|'"$void_mirror"'|g' /etc/xbps.d/*repository*.conf     
     fi
 
     xbps-install -S

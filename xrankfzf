@@ -1,4 +1,5 @@
 #!/bin/env bash
+#Run with sudo
 ./xrankmirrors -g
 ./xrankmirrors -c
 VOID=$(echo $(./xrankmirrors -f | fzf --layout=reverse --header-lines=3) | awk -F' ' '{ print $1 }')
@@ -12,5 +13,6 @@ echo "repository=$VOID""current/nonfree" > $DIR/10-repository-nonfree.conf
 
 echo Cereus: $CEREUS
 echo "repository=$VOID""cereus-core/$(xbps-uhelper arch)" > $DIR/10-cereus-core.conf
-echo "repository=$VOID""cereus-extra/$(xbps-uhelper arch)" > $DIR/10-cereus-extra.conf
+echo "repository=$CEREUS""cereus-extra/$(xbps-uhelper arch)" > $DIR/10-cereus-extra.conf
+xbps-install -S
 exit 0

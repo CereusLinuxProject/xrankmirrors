@@ -85,11 +85,11 @@ Void: $void_mirror"
 }
 
 format() {
-
     for results in "$void_file" "$cereus_file"; do
         sorted_results=$(sort -t, -nrk3 < "$results" | numfmt -d , --field 3 --to=iec-i --suffix=B/s | sed '1s/^/mirror,location,dlspeed,connect\n/' | column -s, -t)
         echo "$sorted_results" > $results
     done
+}
 
 set_fastests() {
 
@@ -114,6 +114,7 @@ print_results() {
     echo ""
     get_fastests
 }
+
 
 xrankfzf() {
 

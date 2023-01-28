@@ -1,7 +1,31 @@
 #!/bin/env bash
-#./xrankmirrors -g -c
-SELECTED=$(echo $(./xrankmirrors -f | fzf --layout=reverse --header-lines=3) | awk -F' ' '{ print $1 }')
-#FILTERED=$(awk -F ' ' '{ print $1 }')
+#Run with sudo
+if [ "$EUID" -ne 0 ]
+  then echo "Run me as superuser"
+  exit
+fi
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:$PWD
 
-echo $SELECTED
+xrankmirrors -g
+xrankmirrors -c
+
+VOID=$(echo $(./xrankmirrors -f | fzf --layout=reverse --header-lines=3) | awk -F' ' '{ print $1 }')
+CEREUS=$(echo $(./xrankmirrors -d | fzf --layout=reverse --header-lines=3) | awk -F' ' '{ print $1 }')
+DIR=/etc/xbps.d
+
+if ! [ -d $DIR ]
+then
+mkdir -p $DIR
+fi
+
+echo Void: $VOID
+echo "repository=$VOID""current" > $DIR/00-repository-main.conf
+echo "repository=$VOID""current/multilib" > $DIR/10-repository-multilib.conf
+echo "repository=$VOID""current/nonfree" > $DIR/10-repository-nonfree.conf
+
+echo Cereus: $CEREUS
+echo "repository=$CEREUS""cereus-core/$(xbps-uhelper arch)" > $DIR/10-cereus-core.conf
+echo "repository=$CEREUS""cereus-extra/$(xbps-uhelper arch)" > $DIR/10-cereus-extra.conf
+
+xbps-install -S
 exit 0

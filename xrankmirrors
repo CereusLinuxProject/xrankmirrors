@@ -118,8 +118,16 @@ print_results() {
 
 xrankfzf() {
 
-    if [ ! -e $cereus_file ] || [ ! -e $void_file ]; then
+    run_yesno=$(echo -e "Yes\nNo" | fzf --layout=reverse --border --border-label="Do you want to do the mirrors test?")
+
+    if [ $run_yesno = "Yes" ] || ; then
         run_ranks
+    fi
+    
+
+    if [ ! -e $cereus_file ] || [ ! -e $void_file ]; then
+        echo -e "\e[1;31mError: No cache file found! Please run the mirrors test."
+        exit 1
     fi
 
     cereus_mirror=$(cat $cereus_file | fzf --layout=reverse --header-lines=1 --border --border-label="Please select a mirror for Cereus repositories" | awk -F' ' '{ print $1 }')

@@ -1,7 +1,16 @@
 #!/bin/env bash
-#./xrankmirrors -g -c
-SELECTED=$(echo $(./xrankmirrors -f | fzf --layout=reverse --header-lines=3) | awk -F' ' '{ print $1 }')
-#FILTERED=$(awk -F ' ' '{ print $1 }')
+./xrankmirrors -g
+./xrankmirrors -c
+VOID=$(echo $(./xrankmirrors -f | fzf --layout=reverse --header-lines=3) | awk -F' ' '{ print $1 }')
+CEREUS=$(echo $(./xrankmirrors -d | fzf --layout=reverse --header-lines=3) | awk -F' ' '{ print $1 }')
+DIR=/etc/xbps.d
 
-echo $SELECTED
+echo Void: $VOID
+echo "repository=$VOID""current" > $DIR/00-repository-main.conf
+echo "repository=$VOID""current/multilib" > $DIR/10-repository-multilib.conf
+echo "repository=$VOID""current/nonfree" > $DIR/10-repository-nonfree.conf
+
+echo Cereus: $CEREUS
+echo "repository=$VOID""cereus-core/$(xbps-uhelper arch)" > $DIR/10-cereus-core.conf
+echo "repository=$VOID""cereus-extra/$(xbps-uhelper arch)" > $DIR/10-cereus-extra.conf
 exit 0

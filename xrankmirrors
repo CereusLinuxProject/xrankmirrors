@@ -31,7 +31,7 @@ get_void() {
 				esac
 			;;
 		esac
-	done <<< "$(curl -# https://raw.githubusercontent.com/void-linux/void-docs/master/src/xbps/repositories/mirrors/index.md)"
+	done <<< "$(curl -# https://raw.githubusercontent.com/void-linux/void-docs/master/src/xbps/repositories/mirrors/index.md)" || exit 1
 	#echo "finished writing results of mirrors to $file"
 }
 
@@ -75,18 +75,25 @@ Void: $void_fastest"
 }
 
 format() {
-	void_list=$(sort -t, -nrk3 < "$file" | numfmt -d , --field 3 --to=iec-i --suffix=B/s | sed '1s/^/mirror,location,dlspeed,connect\n/' | column -s, -t)
-    cereus_list=$(sort -t, -nrk3 < "$cereus_file" | numfmt -d , --field 3 --to=iec-i --suffix=B/s | sed '1s/^/mirror,location,dlspeed,connect\n/' | column -s, -t)
+    void_list=$(sort -t, -nrk3 < "$file" | numfmt -d , --field 3 --to=iec-i --suffix=B/s | sed '1s/^/mirror,location,dlspeed,connect\n/' | column -s, -t)
+    #cereus_list=$(sort -t, -nrk3 < "$cereus_file" | numfmt -d , --field 3 --to=iec-i --suffix=B/s | sed '1s/^/mirror,location,dlspeed,connect\n/' | column -s, -t)
 
     echo "Void Linux mirrors"
     echo "==================================================="
     echo "$void_list"
     echo ""
     
+    #echo "Cereus Linux mirrors"
+    #echo "==================================================="
+    #echo "$cereus_list"
+    #get_fastests
+}
+
+format_cereus() {
+    cereus_list=$(sort -t, -nrk3 < "$cereus_file" | numfmt -d , --field 3 --to=iec-i --suffix=B/s | sed '1s/^/mirror,location,dlspeed,connect\n/' | column -s, -t)
     echo "Cereus Linux mirrors"
     echo "==================================================="
     echo "$cereus_list"
-    get_fastests
 }
 
 set_fastests() {
@@ -109,6 +116,7 @@ case "$1" in
 	-g) get_void ;;
     -c) get_cereus ;;
 	-f) format ;;
+    -d) format_cereus ;;
     -s) set_fastests ;;
 	-r) REGION="$2" ;;
 	-p) REGION="get"; mirrormsg && get | sed '1s/^/region: location\n/' | column -s: -t ;;

@@ -226,7 +226,8 @@ EOF
     fi
     
     if [ ! -e $cereus_file ] || [ ! -e $void_file ]; then
-        echo -e "\e[1;31mError: No cache file found! Please run the mirrors test."
+        echo -e "\e[1;31mError: No cache file found! Please run the mirrors test first."
+        read -n 1 -s -r -p "Press any key to exit..."
         exit 1
     fi
 
@@ -270,6 +271,7 @@ change_mirror() {
 
     echo "${CLI_BOLD}=> Updating XBPS repositories database...${CLI_RESET}"
     xbps-install -S
+    read -n 1 -s -r -p "${CLI_BOLD}Mirror changed. Press any key to exit...${CLI_RESET}"
 }
 
 help() {

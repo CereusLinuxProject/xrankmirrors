@@ -1,6 +1,6 @@
 #!/bin/sh
-PCMANFM_QT_CONF="$HOME/.config/.config/pcmanfm-qt/default/settings.conf"
-XRANKMIRRORS_CONF="$HOME/.config/xrankmirrors.conf"
+PCMANFM_QT_CONF="$XDG_CONFIG_HOME/pcmanfm-qt/default/settings.conf"
+XRANKMIRRORS_CONF="$XDG_CONFIG_HOME/xrankmirrors.conf"
 if [ -e $XRANKMIRRORS_CONF ]; then
     TERM_CMD="$(cat $XRANKMIRRORS_CONF | grep terminal | cut -d"=" -f2)"
 elif [ -e /usr/bin/exo-open ]; then

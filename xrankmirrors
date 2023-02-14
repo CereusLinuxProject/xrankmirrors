@@ -11,6 +11,51 @@ VERSION="2023.02.13"
 region_sel=""
 CLI_BOLD=$(tput bold)
 CLI_RESET=$(tput sgr0)
+dialog_conf="/tmp/xrankmirrors-dialogrc"
+
+cat > "$dialog_conf" <<EOF
+use_scrollbar = ON
+use_shadow = OFF
+use_colors = ON
+screen_color = (WHITE,BLACK,OFF)
+shadow_color = (BLACK,BLACK,ON)
+dialog_color = (WHITE,BLACK,OFF)
+title_color = (WHITE,BLACK,OFF)
+border_color = (WHITE,BLACK,OFF)
+button_active_color = (WHITE,BLUE,ON)
+button_inactive_color = dialog_color
+button_key_active_color = button_active_color
+button_key_inactive_color = (RED,WHITE,OFF)
+button_label_active_color = (YELLOW,BLUE,ON)
+button_label_inactive_color = (BLACK,WHITE,ON)
+inputbox_color = dialog_color
+inputbox_border_color = dialog_color
+searchbox_color = dialog_color
+searchbox_title_color = title_color
+searchbox_border_color = border_color
+position_indicator_color = title_color
+menubox_color = dialog_color
+menubox_border_color = border_color
+item_color = dialog_color
+item_selected_color = button_active_color
+tag_color = title_color
+tag_selected_color = button_label_active_color
+tag_key_color = button_key_inactive_color
+tag_key_selected_color = (RED,BLUE,ON)
+check_color = dialog_color
+check_selected_color = button_active_color
+uarrow_color = (GREEN,WHITE,ON)
+darrow_color = uarrow_color
+itemhelp_color = (WHITE,BLACK,OFF)
+form_active_text_color = button_active_color
+form_text_color = (WHITE,CYAN,ON)
+form_item_readonly_color = (CYAN,WHITE,ON)
+gauge_color = title_color
+border2_color = dialog_color
+inputbox_border2_color = dialog_color
+searchbox_border2_color = dialog_color
+menubox_border2_color = dialog_color
+EOF
 
 if [ "$EUID" -ne 0 ]; then
     echo "Must run as superuser, exiting..."; exit 1
@@ -212,7 +257,7 @@ Tier ${RED}2${RESET} mirrors are limited by 100MB limit size on packages, this m
 EOF
 )
     DIALOG() {
-        dialog --colors --keep-tite --no-shadow --no-mouse \
+        DIALOGRC="$dialog_conf" dialog --colors --keep-tite --no-shadow --no-mouse \
             --backtitle "${BOLD}${WHITE}Cereus Linux Mirror Selector -- https://CereusLinuxProject.github.io (v${VERSION})${RESET}" \
             --cancel-label "Back" --aspect 20 "$@"
         return $?
@@ -271,7 +316,7 @@ change_mirror() {
 
     echo "${CLI_BOLD}=> Updating XBPS repositories database...${CLI_RESET}"
     xbps-install -S
-    read -n 1 -s -r -p "${CLI_BOLD}Mirror changed. Press any key to exit...${CLI_RESET}"
+    read -n 1 -s -r -p "${CLI_BOLD}=> Mirror changed. Press any key to exit...${CLI_RESET}"
 }
 
 help() {

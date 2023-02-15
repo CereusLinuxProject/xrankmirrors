@@ -150,12 +150,6 @@ get_cereus() {
 					*)
 						mirror_cereus="${mirror_cereus#<}"
 						mirror_cereus="${mirror_cereus%>}"
-                        case "$mirror_cereus" in
-                            "https://chiselapp.com/user/cereus-linux/repository/")
-                                cereus_pkg="cereus-extra/uv/$arch/$(xbps-query -R -S xidlehook | grep pkgver | cut -d' ' -f2).$arch.xbps" ;;
-                            *)
-                                cereus_pkg="cereus-extra/$arch/$(xbps-query -R -S xidlehook | grep pkgver | cut -d' ' -f2).$arch.xbps" ;;
-                        esac 
                         provider="${provider% |}"
                         status="${status% |}"
                         tier="${tier% |}"
@@ -294,9 +288,6 @@ change_mirror() {
         rm /etc/xbps.d/*cereus*.conf
         cp /usr/share/xbps.d/*cereus*.conf /etc/xbps.d/
         sed -i 's|https://sourceforge.net/projects/cereus-linux/files/repos/|'"$cereus_mirror"'|g' /etc/xbps.d/*cereus*.conf
-        if [ "$cereus_mirror" = "https://chiselapp.com/user/cereus-linux/repository/" ]; then
-                sed -i 's|/'"$arch"'|/uv/'"$arch"'|g' /etc/xbps.d/*cereus*.conf
-        fi
     fi
 
     if [ -n "$void_mirror" ]; then

@@ -70,8 +70,25 @@ void_mirrorlist_file="https://raw.githubusercontent.com/void-linux/xmirror/maste
 void_mirrorlist="$(curl -s $void_mirrorlist_file | tail -n +3)"
     if [ "$region_sel" = "" ]; then
         echo "$void_mirrorlist"
+    # Void does not have mirrors in Africa, fallback to World.
+    elif [ "$region_sel" = "AF" ]; then
+        echo "$void_mirrorlist" | grep World
     else
         echo "$void_mirrorlist" | grep $region_sel
+    fi
+}
+
+fetch_cereus_mirrorlist() {
+cereus_mirrorlist_file="https://raw.githubusercontent.com/CereusLinuxProject/xrankmirrors/main/mirrorlist.lst"
+#cereus_mirrorlist="$(curl -s $cereus_mirrorlist_file | tail -n +3)"
+cereus_mirrorlist="$(cat $PWD/mirrorlist.lst | tail -n +2)"
+    if [ "$region_sel" = "" ]; then
+        echo "$cereus_mirrorlist"
+    # Cereus does not have mirrors in Oceania, fallback to World.
+    elif [ "$region_sel" = "OC" ]; then
+        echo "$cereus_mirrorlist" | grep World
+    else
+        echo "$cereus_mirrorlist" | grep $region_sel
     fi
 }
 
@@ -103,7 +120,6 @@ get_void() {
 	if [ -e "$void_file" ]; then
         rm "$void_file"
     fi
-	#while read -r region mirror loc loc2 tier; do
     while IFS=$'\t' read -r region mirror loc tier rest; do
 		case $region in
 			\#*) ;;
@@ -117,8 +133,6 @@ get_void() {
                             2) ;;
                             3) ;;
                             *)
-						        mirror="${mirror#<}"
-						        mirror="${mirror%>}"
 						        loc="${loc%%,*}"
 						        printf '%s\n' "${CLI_BOLD}$mirror${CLI_RESET}"
 						        #dlspeed="$(curl -L -Y 1048576 -# -w "%{speed_download}" "$mirror/$pkg" -o/dev/null)"
@@ -142,30 +156,34 @@ get_cereus() {
         rm "$cereus_file"
     fi
 
-	while read -r syntax mirror_cereus syntax2 provider syntax3 tier syntax4 status; do
-		case $syntax in
-			\|)
-				case $mirror_cereus in
-					Repository) ;;
-					*)
-						mirror_cereus="${mirror_cereus#<}"
-						mirror_cereus="${mirror_cereus%>}"
-                        provider="${provider% |}"
-                        status="${status% |}"
-                        tier="${tier% |}"
-						printf '%s\n' "${CLI_BOLD}$mirror_cereus${CLI_RESET}"
-						#dlspeed="$(curl -L -Y 1048576 -# -w "%{speed_download}" "$mirror_cereus/$cereus_pkg" -o/dev/null)"
-                        exec 5>&1
-                        dlspeed=$(wget -O /dev/null "$mirror_cereus/$cereus_pkg" --progress=bar:force:noscroll 2>&1 | progressfilt | tee >(cat - >&5))
-                        dlspeed="$(echo $dlspeed | grep '\([0-9.]\+ [KMG]B/s\)' -o | sed 's| ||g' | sed 's|B/s||g' | numfmt --from=iec)"
-						connect=$(printf "%.2fs" "$(curl --connect-timeout 2 -sw "%{time_appconnect}" "$mirror_cereus" -o/dev/null)")
-						echo "${mirror_cereus},${provider},${tier},${status},${dlspeed},${connect}" >> "$cereus_file"
-					;;
-				esac
-			;;
-		esac
-	done <<< "$(curl -s https://raw.githubusercontent.com/CereusLinuxProject/xrankmirrors/main/mirrorlist.md)"
-    #done <<< "$(cat $PWD/mirrorlist.md)"
+	while IFS=$'\t' read -r region mirror_cereus loc tier provider; do
+        case $region in
+			\#*) ;;
+            *) 
+                case $mirror_cereus in
+                    Tier*) ;;
+                    \#*) ;;
+                    *)
+                        case $loc in 
+                            1) ;;
+                            2) ;;
+                            3) ;;
+                            *)
+                                loc="${loc%%,*}"
+						        printf '%s\n' "${CLI_BOLD}$mirror_cereus${CLI_RESET}"
+						        #dlspeed="$(curl -L -Y 1048576 -# -w "%{speed_download}" "$mirror_cereus/$cereus_pkg" -o/dev/null)"
+                                exec 5>&1
+                                dlspeed=$(wget -O /dev/null "$mirror_cereus/$cereus_pkg" --progress=bar:force:noscroll 2>&1 | progressfilt | tee >(cat - >&5))
+                                dlspeed="$(echo $dlspeed | grep '\([0-9.]\+ [KMG]B/s\)' -o | sed 's| ||g' | sed 's|B/s||g' | numfmt --from=iec)"
+						        connect=$(printf "%.2fs" "$(curl --connect-timeout 2 -sw "%{time_appconnect}" "$mirror_cereus" -o/dev/null)")
+						        echo "${mirror_cereus},${region},${loc},${tier},${provider},${dlspeed},${connect}" >> "$cereus_file"
+					            ;;
+                esac
+                ;;
+                        esac
+            ;;
+        esac
+	done <<< "$(fetch_cereus_mirrorlist)"
 }
 
 run_ranks() {
@@ -173,6 +191,8 @@ run_ranks() {
     get_cereus
     format
 }
+
+echo "${mirror_cereus},${region},${loc},${tier},${provider},${dlspeed},${connect}" >> "$cereus_file"
 
 get_fastests() {
         echo ""
@@ -187,7 +207,7 @@ format() {
     for results in "$void_file" "$cereus_file"; do
         case $results in
         "$void_file") sorted_results=$(sort -t, -nrk5 < "$results" | numfmt -d , --field 5 --to=iec --suffix=B/s |sed '1s/^/Mirror,Region,Location,Tier,Download-Speed,Connect\n/' | column -s, -t);;
-        "$cereus_file") sorted_results=$(sort -t, -nrk5 < "$results" | numfmt -d , --field 5 --to=iec --suffix=B/s |sed '1s/^/Mirror,Provider,Tier,Status,Download-Speed,Connect\n/' | column -s, -t);;
+        "$cereus_file") sorted_results=$(sort -t, -nrk6 < "$results" | numfmt -d , --field 6 --to=iec --suffix=B/s |sed '1s/^/Mirror,Region,Location,Tier,Provider,Download-Speed,Connect\n/' | column -s, -t);;
         esac
         echo "$sorted_results" > $results
     done
@@ -218,9 +238,17 @@ print_results() {
 }
 
 region_prompt() {
-        prompt=$(echo -e "AS - Asia\nEU - Europe\nNA - North America\nOC - Oceania\nSA - South and Central America\nWorld - Globally Available\nAll - Rank all regions" | fzf --layout=reverse --border --border-label="Select your region" | awk -F' ' '{ print $1 }')
+        prompt=$(echo -e "AF - Africa (only Cereus mirrors)\nAS - Asia\nEU - Europe\nNA - North America\nOC - Oceania (only Void mirrors)\nSA - South and Central America\nWorld - Globally Available\nAll - Rank all regions\nDefault - Reset to the default mirrors\nExit - Exit this wizard" | fzf --layout=reverse --border --border-label="Select your region" | awk -F' ' '{ print $1 }')
         if [ "$prompt" = "" ]; then
             region_prompt
+        elif [ "$prompt" = "Default" ]; then
+            rm /etc/xbps.d/*{cereus,repository}*
+            echo "${CLI_BOLD}=> Updating XBPS repositories database...${CLI_RESET}"
+            xbps-install -S
+            read -n 1 -s -r -p "${CLI_BOLD}=> Mirror changed. Press any key to exit...${CLI_RESET}"
+            exit 0    
+        elif [ "$prompt" = "Exit" ]; then
+            exit 0
         fi
 
         case $prompt in
@@ -319,7 +347,7 @@ cat <<EOF
       -h   Show this help
       -i   Manually change mirrors in interactive mode
       -m   Manually change mirrors on non-interactive mode (requires -v and/or -c)
-      -r   Rank/list only specified region mirrors (valid options: AS,EU,NA,OC,SA,World)
+      -r   Rank/list only specified region mirrors (valid options: AF,AS,EU,NA,OC,SA,World)
       -s   Set fastest mirrors from previous results
       -v   Set Void mirror (only for -m)
 

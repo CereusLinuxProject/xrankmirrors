@@ -80,8 +80,8 @@ void_mirrorlist="$(curl -s $void_mirrorlist_file | tail -n +3)"
 
 fetch_cereus_mirrorlist() {
 cereus_mirrorlist_file="https://raw.githubusercontent.com/CereusLinuxProject/xrankmirrors/main/mirrorlist.lst"
-#cereus_mirrorlist="$(curl -s $cereus_mirrorlist_file | tail -n +3)"
-cereus_mirrorlist="$(cat $PWD/mirrorlist.lst | tail -n +2)"
+cereus_mirrorlist="$(curl -s $cereus_mirrorlist_file | tail -n +2)"
+#cereus_mirrorlist="$(cat $PWD/mirrorlist.lst | tail -n +2)"
     if [ "$region_sel" = "" ]; then
         echo "$cereus_mirrorlist"
     # Cereus does not have mirrors in Oceania, fallback to World.

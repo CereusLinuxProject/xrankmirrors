@@ -1,16 +1,16 @@
 # xrankmirrors
 A script to rank and select XBPS mirrors.
 
-        usage: xrankmirrors [-c URL] [-f] [-g] [-h] [-i] [-c URL -v URL -m] [-r REGION] [-s] [-v URL]
-        -c   Set Cereus mirror (only for -m)
-        -f   Print last rank results
-        -g   Rank Void & Cereus mirrors and print results
-        -h   Show this help
-        -i   Manually change mirrors in interactive mode
-        -m   Manually change mirrors on non-interactive mode (requires -v and/or -c)
-        -r   Rank/list only specified region mirrors (valid options: AS,EU,NA,OC,SA,World)
-        -s   Set fastest mirrors from previous results
-        -v   Set Void mirror (only for -m)
+    usage: xrankmirrors [-c URL] [-f] [-g] [-h] [-i] [-c URL -v URL -m] [-r REGION] [-s] [-v URL]
+    -c   Set Cereus mirror (only for -m)
+    -f   Print last rank results
+    -g   Rank Void & Cereus mirrors and print results
+    -h   Show this help
+    -i   Manually change mirrors in interactive mode
+    -m   Manually change mirrors on non-interactive mode (requires -v and/or -c)
+    -r   Rank/list only specified region mirrors (valid options: AS,EU,NA,OC,SA,World)
+    -s   Set fastest mirrors from previous results
+    -v   Set Void mirror (only for -m)
 
 It supports both Void and Cereus Linux mirrors.
 
@@ -32,16 +32,16 @@ When a region is only available in Void or Cereus mirrors, the wizard will fallb
 ## Desktop launcher
 As you may seen, xrankmirrors provides a desktop file. It will look for terminal emulators in your system using different methods. When using PCManFM-Qt it will extract the default terminal emulator from there. When using XFCE it will use <code>exo-open</code> to launch the default terminal emulator. In case your terminal emulator is not detected or the script launches the wrong one, please set it at <code>~/.config/xrankmirrors.conf</code> like this:
 
-        terminal=kitty
+    terminal=kitty
 
 ## Examples
 Rank XBPS mirrors in non-interactive mode, listing only mirrors from North America:
 
-        # xrankmirrors -r NA -g
+    # xrankmirrors -r NA -g
 
 Change mirrors in non-interactive mode:
 
-        # xrankmirrors -c https://plug-mirror.rcac.purdue.edu/osdn/storage/g/c/ce/cereuslinux/repos/ -v https://mirrors.servercentral.com/voidlinux/ -m
+    # xrankmirrors -c https://plug-mirror.rcac.purdue.edu/osdn/storage/g/c/ce/cereuslinux/repos/ -v https://mirrors.servercentral.com/voidlinux/ -m
 
 
 

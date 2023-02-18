@@ -1,6 +1,6 @@
 #!/bin/sh
 PCMANFM_QT_CONF="$XDG_CONFIG_HOME/pcmanfm-qt/lxqt/settings.conf"
-PCMANFM_QT_ETC_CONF="/etc/pcmanfm/lxqt/settings.conf"
+PCMANFM_QT_ETC_CONF="/etc/pcmanfm-qt/lxqt/settings.conf"
 XRANKMIRRORS_CONF="$XDG_CONFIG_HOME/xrankmirrors.conf"
 XRANKMIRRORS_ETC_CONF="/etc/xrankmirrors.conf"
 if [ -e $XRANKMIRRORS_CONF ]; then

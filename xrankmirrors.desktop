@@ -1,6 +1,6 @@
 [Desktop Entry]
-Name=Cereus Linux Mirror Selector
-Name[es]=Selector de Espejos de Cereus Linux
+Name=Mirror Selector
+Name[es]=Selector de Espejos
 Comment=Rank and set XBPS mirrors
 Comment[es]=Clasificar y establecer los espejos XBPS
 GenericName=Mirror Selector

@@ -1,0 +1,14 @@
+#!/bin/bash
+
+RUN_CMD="/usr/bin/xrankmirrors"
+ARGS="-i"
+
+# Check for "socket" argument
+for i in "$@"; do
+  if [[ "$i" == "-s="* ]] || [[ "$i" == "--socket-id="* ]]; then
+    pkexec "${RUN_CMD}" "$@" || "${RUN_CMD}" "$@"
+    exit $?
+  fi
+done
+
+exec pkexec "${RUN_CMD}" ${ARGS} "$@"

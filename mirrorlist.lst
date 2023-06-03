@@ -1,13 +1,13 @@
 # region	url	location	tier    provider
 AF	https://mirror.liquidtelecom.com/osdn/storage/g/c/ce/cereuslinux/repos/	Nairobi, Kenya	1	OSDN
 AS	https://ftp.jaist.ac.jp/pub/sourceforge.jp/storage/g/c/ce/cereuslinux/repos/	Nomi, Japan	1	OSDN
-EU	https://mirrors.dotsrc.org/osdn/storage/g/c/ce/cereuslinux/repos/	Aalborg, Denmark	1	OSDN
+#EU	https://mirrors.dotsrc.org/osdn/storage/g/c/ce/cereuslinux/repos/	Aalborg, Denmark	1	OSDN
 EU	http://ftp.halifax.rwth-aachen.de/osdn/storage/g/c/ce/cereuslinux/repos/	Aachen, Germany	1	OSDN
-EU	http://mirroronet.pl/pub/mirrors/sourceforge.jp/storage/g/c/ce/cereuslinux/repos/	Krakow, Poland	1	OSDN
-EU	https://ftp.acc.umu.se/mirror/osdn.net/storage/g/c/ce/cereuslinux/repos/	Umeå, Sweden	1	OSDN
-NA	https://mirrors.gigenet.com/OSDN/storage/g/c/ce/cereuslinux/repos/	Chicago, U.S.A.	1	OSDN
-NA	https://plug-mirror.rcac.purdue.edu/osdn/storage/g/c/ce/cereuslinux/repos/	Indiana, U.S.A.	1	OSDN
-NA	https://osdn.mirror.constant.com/storage/g/c/ce/cereuslinux/repos/	New Jersey, U.S.A.	1	OSDN
+#EU	http://mirroronet.pl/pub/mirrors/sourceforge.jp/storage/g/c/ce/cereuslinux/repos/	Krakow, Poland	1	OSDN
+#EU	https://ftp.acc.umu.se/mirror/osdn.net/storage/g/c/ce/cereuslinux/repos/	Umeå, Sweden	1	OSDN
+#NA	https://mirrors.gigenet.com/OSDN/storage/g/c/ce/cereuslinux/repos/	Chicago, U.S.A.	1	OSDN
+#NA	https://plug-mirror.rcac.purdue.edu/osdn/storage/g/c/ce/cereuslinux/repos/	Indiana, U.S.A.	1	OSDN
+#NA	https://osdn.mirror.constant.com/storage/g/c/ce/cereuslinux/repos/	New Jersey, U.S.A.	1	OSDN
 SA	https://openbsd.c3sl.ufpr.br/osdn/storage/g/c/ce/cereuslinux/repos/	Curitiba, Brazil	1	OSDN
 World	https://sourceforge.net/projects/cereus-linux/files/repos/	World	1	SourceForge
 World	https://chiselapp.com/user/cereus-linux/repository/cereus-repos/uv/	World	2	Chisel

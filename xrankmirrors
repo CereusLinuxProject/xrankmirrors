@@ -68,7 +68,7 @@ fi
 
 fetch_void_mirrorlist() {
 void_mirrorlist_file="https://raw.githubusercontent.com/void-linux/xmirror/master/mirrors.lst"
-void_mirrorlist="$(curl -s $void_mirrorlist_file | tail -n +3)"
+void_mirrorlist="$(curl -s $void_mirrorlist_file | tail -n +3 | sed 's|USA|U.S.A.|g')"
     if [ "$region_sel" = "" ]; then
         echo "$void_mirrorlist"
     # Void does not have mirrors in Africa, fallback to World.
@@ -138,7 +138,7 @@ get_void() {
 						        printf '%s\n' "${CLI_BOLD}$mirror${CLI_RESET}"
 						        #dlspeed="$(curl -L -Y 1048576 -# -w "%{speed_download}" "$mirror/$pkg" -o/dev/null)"
                                 exec 5>&1
-                                dlspeed=$(wget -O /dev/null "$mirror/$pkg" --progress=bar:force:noscroll 2>&1 | progressfilt | tee >(cat - >&5))
+                                dlspeed=$(wget -O /dev/null "$mirror/$pkg" --tries 3 --timeout 20 --progress=bar:force:noscroll 2>&1 | progressfilt | tee >(cat - >&5))
                                 dlspeed="$(echo $dlspeed | grep '\([0-9.]\+ [KMG]B/s\)' -o | sed 's| ||g' | sed 's|B/s||g' | numfmt --from=iec)"
 						        connect=$(printf "%.2fs" "$(curl --connect-timeout 2 -sw "%{time_appconnect}" "$mirror" -o/dev/null)")
                                 echo "${mirror},${region},${loc},${tier},${dlspeed},${connect}" >> "$void_file"
@@ -174,7 +174,7 @@ get_cereus() {
 						        printf '%s\n' "${CLI_BOLD}$mirror_cereus${CLI_RESET}"
 						        #dlspeed="$(curl -L -Y 1048576 -# -w "%{speed_download}" "$mirror_cereus/$cereus_pkg" -o/dev/null)"
                                 exec 5>&1
-                                dlspeed=$(wget -O /dev/null "$mirror_cereus/$cereus_pkg" --progress=bar:force:noscroll 2>&1 | progressfilt | tee >(cat - >&5))
+                                dlspeed=$(wget -O /dev/null "$mirror_cereus/$cereus_pkg" --tries 3 --timeout 20 --progress=bar:force:noscroll 2>&1 | progressfilt | tee >(cat - >&5))
                                 dlspeed="$(echo $dlspeed | grep '\([0-9.]\+ [KMG]B/s\)' -o | sed 's| ||g' | sed 's|B/s||g' | numfmt --from=iec)"
 						        connect=$(printf "%.2fs" "$(curl --connect-timeout 2 -sw "%{time_appconnect}" "$mirror_cereus" -o/dev/null)")
 						        echo "${mirror_cereus},${region},${loc},${tier},${provider},${dlspeed},${connect}" >> "$cereus_file"

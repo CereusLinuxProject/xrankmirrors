@@ -67,7 +67,7 @@ if [ ! -e "$cachedir" ]; then
 fi
 
 fetch_void_mirrorlist() {
-void_mirrorlist_file="https://raw.githubusercontent.com/void-linux/xmirror/master/mirrors.lst"
+void_mirrorlist_file="https://xmirror.voidlinux.org/raw/mirrors.lst"
 void_mirrorlist="$(curl -s $void_mirrorlist_file | tail -n +3 | sed 's|USA|U.S.A.|g')"
     if [ "$region_sel" = "" ]; then
         echo "$void_mirrorlist"

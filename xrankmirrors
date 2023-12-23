@@ -172,7 +172,12 @@ run_ranks() {
 						            printf '%s\n' "${CLI_BOLD}$mirror${CLI_RESET}"
 						            #dlspeed="$(curl -L -Y 1048576 -# -w "%{speed_download}" "$mirror_cereus/$cereus_pkg" -o/dev/null)"
                                     if [ "$unranked" = "1" ]; then
-                                        echo "${mirror},${region},${loc},${tier},${provider}" >> "$cereus_file"
+                                        case $rank in
+                                            void)
+                                                echo "${mirror},${region},${loc// /_},$(echo ${tier} | grep -o '[0-9]*')" >> "$results_file" ;;
+                                            cereus)
+                                                echo "${mirror},${region},${loc},${tier},${provider}" >> "$results_file" ;;
+                                        esac
                                     else
                                         exec 5>&1
                                         #echo "$mirror/$pkg"
@@ -182,11 +187,9 @@ run_ranks() {
 
                                         case $rank in
                                             void)
-                                                echo "${mirror},${region},${loc// /_},$(echo ${tier} | grep -o '[0-9]*'),${dlspeed},${connect}" >> "$results_file"
-                                                ;;
+                                                echo "${mirror},${region},${loc// /_},$(echo ${tier} | grep -o '[0-9]*'),${dlspeed},${connect}" >> "$results_file" ;;
                                             cereus)
-                                                echo "${mirror},${region},${loc},${tier},${provider},${dlspeed},${connect}" >> "$results_file"
-                                                ;;
+                                                echo "${mirror},${region},${loc},${tier},${provider},${dlspeed},${connect}" >> "$results_file" ;;
                                         esac
                                     fi
 					                ;;
@@ -210,33 +213,31 @@ ${CLI_BOLD}Void${CLI_RESET}: $void_mirror"
 }
 
 format() {
-    if [ $unranked = "1" ]; then
-        for results in "$void_file" "$cereus_file"; do
-            case $results in
-                "$void_file") sorted_results=$(echo "$results" |sed '1s/^/Mirror,Region,Location,Tier\n/' | column -s, -t);;
-                "$cereus_file") sorted_results=$(echo "$results" |sed '1s/^/Mirror,Region,Location,Tier\n/' | column -s, -t);;
-            esac
-            echo "$sorted_results" > $results
-        done
-    else
-
     if [ "$rank_cereus" = "1" ]; then
         results_files="$void_file $cereus_file"
     else
         results_files="$void_file"
     fi
 
-    for results in $results_files; do
-        case $results in
-            "$void_file") sorted_results=$(sort -t, -nrk5 < "$results" | numfmt -d , --field 5 --to=iec --suffix=B/s | sed '1s/^/Mirror,Region,Location,Tier,Download-Speed,Connect\n/' | column -s, -t);;
-
-            "$cereus_file") sorted_results=$(sort -t, -nrk6 < "$results" | numfmt -d , --field 6 --to=iec --suffix=B/s | sed '1s/^/Mirror,Region,Location,Tier,Provider,Download-Speed,Connect\n/' | column -s, -t);;
-        esac
-        #printf "%s" "$sorted_results"
-        printf "%s" "$sorted_results" > "$results"
-        #cat "$results" | sed '1 d' | tee "$results"
-    done
-fi
+    if [ "$unranked" = "1" ]; then
+        for results in $results_files; do
+            case $results in
+                "$void_file") sorted_results=$(cat "$results" | sed '1s/^/Mirror,Region,Location,Tier\n/' | column -s, -t);;
+                "$cereus_file") sorted_results=$(cat "$results" | sed '1s/^/Mirror,Region,Location,Tier,Provider\n/' | column -s, -t);;
+            esac
+            printf "%s" "$sorted_results" > "$results"
+        done
+    else
+        for results in $results_files; do
+            case $results in
+                "$void_file") sorted_results=$(sort -t, -nrk5 < "$results" | numfmt -d , --field 5 --to=iec --suffix=B/s | sed '1s/^/Mirror,Region,Location,Tier,Download-Speed,Connect\n/' | column -s, -t);;
+                "$cereus_file") sorted_results=$(sort -t, -nrk6 < "$results" | numfmt -d , --field 6 --to=iec --suffix=B/s | sed '1s/^/Mirror,Region,Location,Tier,Provider,Download-Speed,Connect\n/' | column -s, -t);;
+            esac
+            #printf "%s" "$sorted_results"
+            printf "%s" "$sorted_results" > "$results"
+            #cat "$results" | sed '1 d' | tee "$results"
+        done
+    fi
 }
 
 set_fastests() {
@@ -267,7 +268,7 @@ region_prompt() {
     if [ "$GUI_ENABLE" = "1" ]; then
         prompt=$(yad \
             --window-icon="configurator" \
-            --height="270" \
+            --height="290" \
             --width="300" \
             --separator="" \
             --list \
@@ -398,40 +399,77 @@ select_mirror() {
     if [ "$GUI_ENABLE" = "1" ]; then
         yad --title="Important note about Cereus Linux mirrors" --info --text "$CEREUSMSG"
 
-        cereus_mirror=$(yad --list \
-            --separator="" \
-            --print-column 2 \
-            --width=1100 \
-            --height=200 \
-            --title "Cereus Linux Mirror Selector" --window-icon="configurator" \
-            --radiolist \
-            --column "" \
-            --column "Mirror" \
-            --column "Region" \
-            --column "Location" \
-            --column "Tier" \
-            --column "Provider" \
-            --column "Download Speed" \
-            --column "Connect" \
-            $(sed -e 's/^/FALSE /' $cereus_file | tail +2))
+        if [ "$unranked" = "1" ]; then
+            cereus_mirror=$(yad --list \
+                --separator="" \
+                --print-column 2 \
+                --text="Please select a mirror for Cereus Linux repositories" \
+                --width=900 \
+                --height=200 \
+                --title "Cereus Linux Mirror Selector" --window-icon="configurator" \
+                --radiolist \
+                --column "" \
+                --column "Mirror" \
+                --column "Region" \
+                --column "Location" \
+                --column "Tier" \
+                --column "Provider" \
+                $(sed -e 's/^/FALSE /' $cereus_file | tail +2))
 
-        yad --title="Important note about Void Linux mirrors" --info --text "$VOIDMSG"
+            yad --title="Important note about Void Linux mirrors" --info --text "$VOIDMSG"
 
-        void_mirror=$(yad --list \
-            --separator="" \
-            --print-column 2 \
-            --width=1100 \
-            --height=300 \
-            --title "Cereus Linux Mirror Selector" --window-icon="configurator" \
-            --radiolist \
-            --column "" \
-            --column "Mirror" \
-            --column "Region" \
-            --column "Location" \
-            --column "Tier" \
-            --column "Download Speed" \
-            --column "Connect" \
-            $(sed -e 's/^/FALSE /' $void_file | tail +2))
+            void_mirror=$(yad --list \
+                --separator="" \
+                --print-column 2 \
+                --text="Please select a mirror for Void Linux repositories" \
+                --width=700 \
+                --height=300 \
+                --title "Cereus Linux Mirror Selector" --window-icon="configurator" \
+                --radiolist \
+                --column "" \
+                --column "Mirror" \
+                --column "Region" \
+                --column "Location" \
+                --column "Tier" \
+                $(sed -e 's/^/FALSE /' $void_file | tail +2))
+            else
+                cereus_mirror=$(yad --list \
+                    --separator="" \
+                    --print-column 2 \
+                    --text="Please select a mirror for Cereus Linux repositories" \
+                    --width=1100 \
+                    --height=200 \
+                    --title "Cereus Linux Mirror Selector" --window-icon="configurator" \
+                    --radiolist \
+                    --column "" \
+                    --column "Mirror" \
+                    --column "Region" \
+                    --column "Location" \
+                    --column "Tier" \
+                    --column "Provider" \
+                    --column "Download Speed" \
+                    --column "Connect" \
+                    $(sed -e 's/^/FALSE /' $cereus_file | tail +2))
+
+                    yad --title="Important note about Void Linux mirrors" --info --text "$VOIDMSG"
+
+                    void_mirror=$(yad --list \
+                        --separator="" \
+                        --print-column 2 \
+                        --text="Please select a mirror for Void Linux repositories" \
+                        --width=1100 \
+                        --height=300 \
+                        --title "Cereus Linux Mirror Selector" --window-icon="configurator" \
+                        --radiolist \
+                        --column "" \
+                        --column "Mirror" \
+                        --column "Region" \
+                        --column "Location" \
+                        --column "Tier" \
+                        --column "Download Speed" \
+                        --column "Connect" \
+                        $(sed -e 's/^/FALSE /' $void_file | tail +2))
+                    fi
     else
             DIALOG --title "${BOLD} Important note about Cereus Linux mirrors ${RESET}" --msgbox "$CEREUSMSG" 15 80
             cereus_mirror=$(cat $cereus_file | fzf --layout=reverse --header-lines=1 --border --border-label="Please select a mirror for Cereus repositories" | awk -F' ' '{ print $1 }')
@@ -461,7 +499,6 @@ change_mirror() {
             mkdir -p "/glibc/etc/xbps.d"
         fi
     else
-        echo "no"
         container="0"
         syspath="/"
     fi
@@ -525,12 +562,14 @@ detect_removed_mirrors() {
 
     if [ -e /etc/xbps.d/10-cereus-core.conf ] || [ -e /etc/xbps.d/10-cereus-extra.conf ]; then
         for repo_file in $repo_file_list; do
-            echo "$repo_file"
-            current_mirror="$(cat "$repo_file" | cut -d '=' -f2)"
+            current_mirror="$(cat "$repo_file" | cut -d '=' -f2 | sed 's|repos/cereus-.*|repos/|g')"
             removed_mirrorlist="$(curl -s https://raw.githubusercontent.com/CereusLinuxProject/xrankmirrors/main/removed-mirrors.lst | tail -n +2)"
-            if [ a=$(echo "$removed_mirrorlist" | grep -q -o "$current_mirror") ]; then
+            if n=$(echo "$removed_mirrorlist" | grep -q -o "$current_mirror"); then
                 reset_cereus_mirrors="1"
                 to_reset="$to_reset $repo_file"
+            else
+                reset_cereus_mirrors="0"
+                to_reset=""
             fi
         done
 

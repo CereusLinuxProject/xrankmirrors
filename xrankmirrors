@@ -13,6 +13,11 @@ CLI_BOLD=$(tput bold)
 CLI_RESET=$(tput sgr0)
 dialog_conf="/tmp/xrankmirrors-dialogrc"
 
+RED="\Z1"
+WHITE="\Z7"
+BOLD="\Zb"
+RESET="\Zn"
+
 cat > "$dialog_conf" <<EOF
 use_scrollbar = ON
 use_shadow = OFF
@@ -268,7 +273,8 @@ region_prompt() {
     if [ "$GUI_ENABLE" = "1" ]; then
         prompt=$(yad \
             --window-icon="configurator" \
-            --height="290" \
+            --text="Select your region" \
+            --height="310" \
             --width="300" \
             --separator="" \
             --list \
@@ -314,13 +320,10 @@ interactive() {
     detect_removed_mirrors
 
     # dialog colors
-    RED="\Z1"
-    WHITE="\Z7"
-    BOLD="\Zb"
-    RESET="\Zn"
+
     VOIDMSG=$(fold -sw 76 <<EOF
 
-For the best experience, choose a mirror geographically close to you, or use the Fastly Global CDN (listed in ${RED}World${RESET}).
+For the best experience, choose a mirror geographically close to you, or use the Fastly Global CDN (listed in ${BOLD}World${RESET}).
 
 Tier 1 mirrors are maintained by the Void Linux Infrastructure Team and will always have the latest packages available. Tier 2 mirrors are not managed by Void and do not have any guarantees of freshness or completeness of packages, nor are they required to sync every available architecture or sub-repository.
 EOF
@@ -328,16 +331,17 @@ EOF
 
     CEREUSMSG=$(fold -sw 76 <<EOF
 
-${RED}Tier 1${RESET} mirrors have all the packages available in both ${RED}cereus-extra${RESET} and ${RED}cereus-core${RESET} repositories and will always have the latest packages available. 
+${BOLD}Tier 1${RESET} mirrors have all the packages available in both ${BOLD}cereus-extra${RESET} and ${BOLD}cereus-core${RESET} repositories and will always have the latest packages available. 
 
-${RED}Tier 2${RESET} mirrors are limited at ~150MB size on packages, and ${RED}Tier 3${RESET} mirrors are limited at 100MB. This make some heavy packages unavailable in them (${RED}OnlyOffice${RESET} for tier 2, ${RED}Brave${RESET} and ${RED}Heroic${RESET} for tier 3). You can choose them ${BOLD}only if you are ok with that${RESET}.
+${BOLD}Tier 2${RESET} mirrors are limited at ~150MB size on packages, and ${BOLD}Tier 3${RESET} mirrors are limited at 100MB. This make some heavy packages unavailable in them (${BOLD}OnlyOffice${RESET} for tier 2, ${BOLD}Brave${RESET} and ${BOLD}Heroic${RESET} for tier 3). You can choose them ${BOLD}only if you are ok with that${RESET}.
 EOF
 )
 
     if [ "$GUI_ENABLE" = "1" ]; then
             initial_prompt=$(yad \
         --window-icon="configurator" \
-        --height="210" \
+        --text="What would you like to do?" \
+        --height="230" \
         --width="400" \
         --separator="" \
         --print-column 2 \
@@ -416,7 +420,7 @@ select_mirror() {
                 --column "Provider" \
                 $(sed -e 's/^/FALSE /' $cereus_file | tail +2))
 
-            yad --title="Important note about Void Linux mirrors" --info --text "$VOIDMSG"
+            yad --title="Important note about Void Linux mirrors" --info --text "$(echo -e $VOIDMSG | sed 's|'"${BOLD}"'|<b>|g' | sed 's|'"${RESET}"'|</b>|g')"
 
             void_mirror=$(yad --list \
                 --separator="" \
@@ -553,7 +557,7 @@ detect_removed_mirrors() {
     local to_reset
 
     if [ -e /glibc/etc/xbps.d ]; then
-        repo_file_list="/{glibc,}etc/xbps.d/*cereus*.conf"
+        repo_file_list="$(find /{,glibc/}etc/xbps.d/*cereus*.conf | tr '\n' ' ')"
         sync_repos_cmd="xchroot /glibc xbps-install -S; xbps-install -S"
     else
         repo_file_list="/etc/xbps.d/*cereus*.conf"

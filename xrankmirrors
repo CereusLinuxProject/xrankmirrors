@@ -1,14 +1,13 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 ## credits to https://paste.sh/1QS8Tgf6#aHTfRy1dOG4rcA5x_6kauwq3
 
 arch=$(xbps-uhelper arch)
-pkg=current/$(xbps-query -R -S 2048-qt | grep pkgver | cut -d' ' -f2).x86_64.xbps
 cachedir="/var/cache/xrankmirrors"
 void_file="$cachedir/void-results"
 cereus_file="$cachedir/cereus-results"
-cereus_pkg="cereus-extra/$arch/$(xbps-query -R -S xidlehook | grep pkgver | cut -d' ' -f2).$arch.xbps"
-VERSION="2023.05.31"
-region_sel=""
+VERSION="2023.12.22"
+region_sel="ALL"
+unranked=""
 voidnsrun_container=""
 CLI_BOLD=$(tput bold)
 CLI_RESET=$(tput sgr0)
@@ -66,30 +65,33 @@ if [ ! -e "$cachedir" ]; then
     mkdir -p "$cachedir"
 fi
 
-fetch_void_mirrorlist() {
-void_mirrorlist_file="https://xmirror.voidlinux.org/raw/mirrors.lst"
-void_mirrorlist="$(curl -s $void_mirrorlist_file | tail -n +3 | sed 's|USA|U.S.A.|g')"
-    if [ "$region_sel" = "" ]; then
-        echo "$void_mirrorlist"
-    # Void does not have mirrors in Africa, fallback to World.
-    elif [ "$region_sel" = "AF" ]; then
-        echo "$void_mirrorlist" | grep World
-    else
-        echo "$void_mirrorlist" | grep $region_sel
-    fi
-}
+fetch_mirrorlist() {
+    case "$rank" in
+        void) 
+            mirrorlist_file="https://xmirror.voidlinux.org/raw/mirrors.lst"
+            mirrorlist="$(curl -s $mirrorlist_file | tail -n +3 | sed 's|USA|U.S.A.|g')"
+            distname="Void"
+            ;;
+        cereus)
+            mirrorlist_file="https://raw.githubusercontent.com/CereusLinuxProject/xrankmirrors/main/mirrorlist.lst"
+            mirrorlist="$(curl -s $mirrorlist_file | tail -n +2)"
+            distname="Cereus"
+            ;;
+    esac
 
-fetch_cereus_mirrorlist() {
-cereus_mirrorlist_file="https://raw.githubusercontent.com/CereusLinuxProject/xrankmirrors/main/mirrorlist.lst"
-cereus_mirrorlist="$(curl -s $cereus_mirrorlist_file | tail -n +2)"
-#cereus_mirrorlist="$(cat $PWD/mirrorlist.lst | tail -n +2)"
-    if [ "$region_sel" = "" ]; then
-        echo "$cereus_mirrorlist"
-    # Cereus does not have mirrors in Oceania, fallback to World.
-    elif [ "$region_sel" = "OC" ]; then
-        echo "$cereus_mirrorlist" | grep World
+    if [ "$region_sel" = "ALL" ]; then
+        echo "$mirrorlist"
+    elif n=$(echo "$mirrorlist" | grep -q "$region_sel"); then
+        echo "$mirrorlist" | grep $region_sel
     else
-        echo "$cereus_mirrorlist" | grep $region_sel
+        if [ "$GUI_ENABLE" = "1" ]; then
+           yad --image dialog-warning --title "Warning" --text-width=20 --button=yad-ok --timeout=10 --text "$distname Linux does not have mirrors in the selected region, falling back to World." 
+        else
+            #DIALOG --title "${BOLD}Warning${RESET}" --msgbox "${BOLD}$distname Linux does not have mirrors in the selected region, falling back to World.${RESET}" 8 50
+            echo "hola mundo" >/dev/null
+        fi
+       
+        echo "$mirrorlist" | grep "World"
     fi
 }
 
@@ -116,80 +118,85 @@ progressfilt ()
     done
 }
 
-get_void() {
-    printf '%s\n' "${CLI_BOLD}=> Getting Void mirrors from xmirror repository...${CLI_RESET}" ''
-	if [ -e "$void_file" ]; then
-        rm "$void_file"
-    fi
-    while IFS=$'\t' read -r region mirror loc tier rest; do
-		case $region in
-			\#*) ;;
-            *) 
-				case $mirror in
-					Tier*) ;;
-                    \#) ;;
-					*)
-                        case $loc in
-                            1) ;;
-                            2) ;;
-                            3) ;;
-                            *)
-						        loc="${loc%%,*}"
-						        printf '%s\n' "${CLI_BOLD}$mirror${CLI_RESET}"
-						        #dlspeed="$(curl -L -Y 1048576 -# -w "%{speed_download}" "$mirror/$pkg" -o/dev/null)"
-                                exec 5>&1
-                                dlspeed=$(wget -O /dev/null "$mirror/$pkg" --tries 3 --timeout 20 --progress=bar:force:noscroll 2>&1 | progressfilt | tee >(cat - >&5))
-                                dlspeed="$(echo $dlspeed | grep '\([0-9.]\+ [KMG]B/s\)' -o | sed 's| ||g' | sed 's|B/s||g' | numfmt --from=iec)"
-						        connect=$(printf "%.2fs" "$(curl --connect-timeout 2 -sw "%{time_appconnect}" "$mirror" -o/dev/null)")
-                                echo "${mirror},${region},${loc},${tier},${dlspeed},${connect}" >> "$void_file"
-                                ;;
-                    	esac                        
-					;;
-				esac
-			;;
-		esac
-	done <<< "$(fetch_void_mirrorlist)"
-}
-
-get_cereus() {
-    printf '%s\n' "${CLI_BOLD}=> Getting Cereus mirrors from xrankmirrors repository...${CLI_RESET}" ''
-	if [ -e "$cereus_file" ]; then
-        rm "$cereus_file"
-    fi
-
-	while IFS=$'\t' read -r region mirror_cereus loc tier provider; do
-        case $region in
-			\#*) ;;
-            *) 
-                case $mirror_cereus in
-                    Tier*) ;;
-                    \#*) ;;
-                    *)
-                        case $loc in 
-                            1) ;;
-                            2) ;;
-                            3) ;;
-                            *)
-                                loc="${loc%%,*}"
-						        printf '%s\n' "${CLI_BOLD}$mirror_cereus${CLI_RESET}"
-						        #dlspeed="$(curl -L -Y 1048576 -# -w "%{speed_download}" "$mirror_cereus/$cereus_pkg" -o/dev/null)"
-                                exec 5>&1
-                                dlspeed=$(wget -O /dev/null "$mirror_cereus/$cereus_pkg" --tries 3 --timeout 20 --progress=bar:force:noscroll 2>&1 | progressfilt | tee >(cat - >&5))
-                                dlspeed="$(echo $dlspeed | grep '\([0-9.]\+ [KMG]B/s\)' -o | sed 's| ||g' | sed 's|B/s||g' | numfmt --from=iec)"
-						        connect=$(printf "%.2fs" "$(curl --connect-timeout 2 -sw "%{time_appconnect}" "$mirror_cereus" -o/dev/null)")
-						        echo "${mirror_cereus},${region},${loc},${tier},${provider},${dlspeed},${connect}" >> "$cereus_file"
-					            ;;
-                esac
-                ;;
-                        esac
-            ;;
-        esac
-	done <<< "$(fetch_cereus_mirrorlist)"
-}
-
 run_ranks() {
-    get_void
-    get_cereus
+    clear
+
+    if [ "$rank_cereus" = "1" ]; then
+        rank_list="void cereus"
+    else
+		echo "$rank_cereus"
+        rank_list="void"
+    fi
+
+    for rank in $rank_list; do
+        case "$rank" in
+            void)
+                cli_msg="Getting Void mirrors from xmirror repository..."
+                results_file="$void_file"
+                columns="region mirror loc tier rest"
+				if [ "$arch" = "x86_64" ] || [ "$arch" = "i686" ]; then
+					pkg_prefix="current"
+				elif [ "$arch" = "x86_64-musl" ]; then
+					pkg_prefix="current/musl"
+				fi
+				pkg="$pkg_prefix/$(xbps-query -R -S 2048-qt | grep pkgver | cut -d' ' -f2).$arch.xbps"
+                ;;
+            cereus)
+                cli_msg="Getting Cereus mirrors from xrankmirrors repository..."
+                results_file="$cereus_file"
+                columns="region mirror loc tier provider"
+                pkg="cereus-extra/$arch/$(xbps-query -R -S xidlehook | grep pkgver | cut -d' ' -f2).$arch.xbps"
+                ;;
+         esac
+
+        printf '%s\n' "${CLI_BOLD}=> $cli_msg ${CLI_RESET}" ''
+        #echo -e "${CLI_BOLD}=> $cli_msg ${CLI_RESET}\n"
+	    if [ -e "$results_file" ]; then
+            rm "$results_file"
+        fi
+
+	    while IFS=$'\t' read -r $columns; do
+            case "$region" in
+			    \#*) ;;
+                *) 
+                    case "$mirror" in
+                        Tier*) ;;
+                        \#*) ;;
+                        *)
+                            case "$loc" in 
+                                1) ;;
+                                2) ;;
+                                3) ;;
+                                *)
+                                    loc="${loc%%,*}"
+						            printf '%s\n' "${CLI_BOLD}$mirror${CLI_RESET}"
+						            #dlspeed="$(curl -L -Y 1048576 -# -w "%{speed_download}" "$mirror_cereus/$cereus_pkg" -o/dev/null)"
+                                    if [ "$unranked" = "1" ]; then
+                                        echo "${mirror},${region},${loc},${tier},${provider}" >> "$cereus_file"
+                                    else
+                                        exec 5>&1
+                                        #echo "$mirror/$pkg"
+                                        dlspeed=$(wget -O /dev/null "$mirror/$pkg" --tries 3 --timeout 20 --progress=bar:force:noscroll 2>&1 | progressfilt | tee >(cat - >&5))
+                                        dlspeed="$(echo $dlspeed | grep '\([0-9.]\+ [KMG]B/s\)' -o | sed 's| ||g' | sed 's|B/s||g' | numfmt --from=iec)"
+	        					        connect=$(printf "%.2fs" "$(curl --connect-timeout 2 -sw "%{time_appconnect}" "$mirror" -o/dev/null)")
+
+                                        case $rank in
+                                            void)
+                                                echo "${mirror},${region},${loc// /_},$(echo ${tier} | grep -o '[0-9]*'),${dlspeed},${connect}" >> "$results_file"
+                                                ;;
+                                            cereus)
+                                                echo "${mirror},${region},${loc},${tier},${provider},${dlspeed},${connect}" >> "$results_file"
+                                                ;;
+                                        esac
+                                    fi
+					                ;;
+                            esac
+                                ;;
+                    esac
+                        ;;
+            esac
+	    done <<< "$(fetch_mirrorlist)"
+    done
     format
 }
 
@@ -203,13 +210,33 @@ ${CLI_BOLD}Void${CLI_RESET}: $void_mirror"
 }
 
 format() {
-    for results in "$void_file" "$cereus_file"; do
+    if [ $unranked = "1" ]; then
+        for results in "$void_file" "$cereus_file"; do
+            case $results in
+                "$void_file") sorted_results=$(echo "$results" |sed '1s/^/Mirror,Region,Location,Tier\n/' | column -s, -t);;
+                "$cereus_file") sorted_results=$(echo "$results" |sed '1s/^/Mirror,Region,Location,Tier\n/' | column -s, -t);;
+            esac
+            echo "$sorted_results" > $results
+        done
+    else
+
+    if [ "$rank_cereus" = "1" ]; then
+        results_files="$void_file $cereus_file"
+    else
+        results_files="$void_file"
+    fi
+
+    for results in $results_files; do
         case $results in
-        "$void_file") sorted_results=$(sort -t, -nrk5 < "$results" | numfmt -d , --field 5 --to=iec --suffix=B/s |sed '1s/^/Mirror,Region,Location,Tier,Download-Speed,Connect\n/' | column -s, -t);;
-        "$cereus_file") sorted_results=$(sort -t, -nrk6 < "$results" | numfmt -d , --field 6 --to=iec --suffix=B/s |sed '1s/^/Mirror,Region,Location,Tier,Provider,Download-Speed,Connect\n/' | column -s, -t);;
+            "$void_file") sorted_results=$(sort -t, -nrk5 < "$results" | numfmt -d , --field 5 --to=iec --suffix=B/s | sed '1s/^/Mirror,Region,Location,Tier,Download-Speed,Connect\n/' | column -s, -t);;
+
+            "$cereus_file") sorted_results=$(sort -t, -nrk6 < "$results" | numfmt -d , --field 6 --to=iec --suffix=B/s | sed '1s/^/Mirror,Region,Location,Tier,Provider,Download-Speed,Connect\n/' | column -s, -t);;
         esac
-        echo "$sorted_results" > $results
+        #printf "%s" "$sorted_results"
+        printf "%s" "$sorted_results" > "$results"
+        #cat "$results" | sed '1 d' | tee "$results"
     done
+fi
 }
 
 set_fastests() {
@@ -219,45 +246,72 @@ set_fastests() {
     fi
 
     get_fastests
-    change_container_mirror
     change_mirror
 }
 
 print_results() {
 
-    echo "${CLI_BOLD}Void Linux mirrors
-===================================================${CLI_RESET}"
+    separator="==================================================="
+    echo -e "${CLI_BOLD}Void Linux mirrors\n$separator${CLI_RESET}"
     cat $void_file
-    echo ""
+    echo -e "\n"
     
-    echo "${CLI_BOLD}Cereus Linux mirrors
-===================================================${CLI_RESET}"
+    echo -e "${CLI_BOLD}Cereus Linux mirrors\n$separator${CLI_RESET}"
     cat $cereus_file
-    echo ""
+    echo -e "\n"
     get_fastests
 }
 
 region_prompt() {
-        prompt=$(echo -e "AF - Africa (only Cereus mirrors)\nAS - Asia\nEU - Europe\nNA - North America\nOC - Oceania (only Void mirrors)\nSA - South and Central America\nWorld - Globally Available\nAll - Rank all regions\nDefault - Reset to the default mirrors\nExit - Exit this wizard" | fzf --layout=reverse --border --border-label="Select your region" | awk -F' ' '{ print $1 }')
+
+    if [ "$GUI_ENABLE" = "1" ]; then
+        prompt=$(yad \
+            --window-icon="configurator" \
+            --height="270" \
+            --width="300" \
+            --separator="" \
+            --list \
+            --title "Cereus Linux Mirror Selector" \
+            --radiolist \
+            --column "" \
+            --column "ID" \
+            --column "Option" \
+            --print-column 2 \
+            FALSE "AS" "Asia" \
+            FALSE "EU" "Europe" \
+            FALSE "NA" "North America" \
+            FALSE "OC" "Oceania" \
+            FALSE "SA" "South and Central America" \
+            FALSE "World" "Globally available" \
+            FALSE "ALL" "All mirrors available")
+    else
+        prompt=$(echo -e "AS - Asia\nEU - Europe\nNA - North America\nOC - Oceania\nSA - South and Central America\nWorld - Globally Available\nALL - All mirrors available" | fzf --layout=reverse --border --border-label="Select your region" | awk -F' ' '{ print $1 }')
+    fi
+            # Currently there are no mirrors in Africa
+            # FALSE "AF" "Africa" \
+            # AF - Africa (only Cereus mirrors)\n
+
         if [ "$prompt" = "" ]; then
-            region_prompt
-        elif [ "$prompt" = "Default" ]; then
-            rm /etc/xbps.d/*{cereus,repository}*
-            echo "${CLI_BOLD}=> Updating XBPS repositories database...${CLI_RESET}"
-            xbps-install -S
-            read -n 1 -s -r -p "${CLI_BOLD}=> Mirror changed. Press any key to exit...${CLI_RESET}"
-            exit 0    
-        elif [ "$prompt" = "Exit" ]; then
-            exit 0
+            #region_prompt
+            exit 1
         fi
 
         case $prompt in
-            All) ;;
+            ALL) ;;
             *) region_sel="$prompt";;
         esac
 }
 
-xrankfzf() {
+DIALOG() {
+    DIALOGRC="$dialog_conf" dialog --colors --keep-tite --no-shadow --no-mouse \
+        --backtitle "${BOLD}${WHITE}Cereus Linux Mirror Selector -- https://CereusLinuxProject.github.io (v${VERSION})${RESET}" \
+        --cancel-label "Back" --aspect 20 "$@"
+    return $?
+}
+
+interactive() {
+    detect_removed_mirrors
+
     # dialog colors
     RED="\Z1"
     WHITE="\Z7"
@@ -278,98 +332,218 @@ ${RED}Tier 1${RESET} mirrors have all the packages available in both ${RED}cereu
 ${RED}Tier 2${RESET} mirrors are limited at ~150MB size on packages, and ${RED}Tier 3${RESET} mirrors are limited at 100MB. This make some heavy packages unavailable in them (${RED}OnlyOffice${RESET} for tier 2, ${RED}Brave${RESET} and ${RED}Heroic${RESET} for tier 3). You can choose them ${BOLD}only if you are ok with that${RESET}.
 EOF
 )
-    DIALOG() {
-        DIALOGRC="$dialog_conf" dialog --colors --keep-tite --no-shadow --no-mouse \
-            --backtitle "${BOLD}${WHITE}Cereus Linux Mirror Selector -- https://CereusLinuxProject.github.io (v${VERSION})${RESET}" \
-            --cancel-label "Back" --aspect 20 "$@"
-        return $?
-    }
 
-    run_yesno=$(echo -e "Yes\nNo" | fzf --layout=reverse --border --border-label="Do you want to do the mirrors test?")
-
-    if [ $run_yesno = "Yes" ]; then
-        region_prompt
-        run_ranks
-        select_mirror
+    if [ "$GUI_ENABLE" = "1" ]; then
+            initial_prompt=$(yad \
+        --window-icon="configurator" \
+        --height="210" \
+        --width="400" \
+        --separator="" \
+        --print-column 2 \
+        --hide-column 2 \
+        --list \
+        --title "Cereus Linux Mirror Selector" \
+        --radiolist \
+        --column "" \
+        --column "ID" \
+        --column "Option" \
+        TRUE 1 "Select and change mirrors (without ranking)" \
+        FALSE 2 "Rank available mirrors and select mirrors" \
+        FALSE 3 "Reset to the default mirrors" \
+        FALSE 4 "Exit this wizard")
     else
-        if [ ! -e $cereus_file ] || [ ! -e $void_file ]; then
-            echo -e "\e[1;31mError: No cache file found! Please run the mirrors test first."
-            read -n 1 -s -r -p "Press any key to exit..."
-            exit 1
-        else
-            select_mirror
-        fi
+        initial_prompt=$(echo -e "1 - Select and change mirrors (without ranking)\n2 - Rank available mirrors and select mirrors\n3 - Reset to the default mirrors\n4 - Exit this wizard" | fzf --layout=reverse --border --border-label="What would you like to do?" | awk -F' ' '{ print $1 }')
     fi
 
-    change_container_mirror
+
+    if [ "$initial_prompt" = "1" ]; then
+        region_prompt
+        unranked="1"
+        run_ranks
+        select_mirror
+    elif [ "$initial_prompt" = "2" ]; then
+        region_prompt
+        unranked="0"
+        run_ranks
+        select_mirror
+    elif [ "$initial_prompt" = "3" ]; then
+        rm /etc/xbps.d/*{cereus,repository}*
+        echo "${CLI_BOLD}=> Updating XBPS repositories database...${CLI_RESET}"
+        xbps-install -S
+        exitstatus=$?
+        if [ $exitstatus = 0 ]; then
+            DIALOG --title "${BOLD}Information${RESET}" --msgbox "${BOLD}Mirrors changed succesfully!${RESET}" 5 40
+            exit 0    
+        else
+            DIALOG --title "${BOLD}Information${RESET}" --msgbox "${BOLD}Something went wrong. Couldn't change mirrors...!${RESET}" 5 40
+            exit 1
+        fi
+        
+    elif [ "$initial_prompt" = "4" ]; then
+        exit 0
+    else 
+        exit 1
+    fi
+
     change_mirror
 }
 
 select_mirror() {
-    DIALOG --title "${BOLD} Important note about Cereus Linux mirrors ${RESET}" --msgbox "$CEREUSMSG" 15 80
-    cereus_mirror=$(cat $cereus_file | fzf --layout=reverse --header-lines=1 --border --border-label="Please select a mirror for Cereus repositories" | awk -F' ' '{ print $1 }')
+    if [ "$rank_cereus" = "1" ]; then
+        select_list="void cereus"
+    else
+        select_list="void"
+    fi
 
-    DIALOG --title "${BOLD} Important note about Void Linux mirrors ${RESET}" --msgbox "$VOIDMSG" 15 80
-    void_mirror=$(cat $void_file | fzf --layout=reverse --header-lines=1 --border --border-label="Please select a mirror for Void repositories" | awk -F' ' '{ print $1 }')
+    if [ "$GUI_ENABLE" = "1" ]; then
+        yad --title="Important note about Cereus Linux mirrors" --info --text "$CEREUSMSG"
+
+        cereus_mirror=$(yad --list \
+            --separator="" \
+            --print-column 2 \
+            --width=1100 \
+            --height=200 \
+            --title "Cereus Linux Mirror Selector" --window-icon="configurator" \
+            --radiolist \
+            --column "" \
+            --column "Mirror" \
+            --column "Region" \
+            --column "Location" \
+            --column "Tier" \
+            --column "Provider" \
+            --column "Download Speed" \
+            --column "Connect" \
+            $(sed -e 's/^/FALSE /' $cereus_file | tail +2))
+
+        yad --title="Important note about Void Linux mirrors" --info --text "$VOIDMSG"
+
+        void_mirror=$(yad --list \
+            --separator="" \
+            --print-column 2 \
+            --width=1100 \
+            --height=300 \
+            --title "Cereus Linux Mirror Selector" --window-icon="configurator" \
+            --radiolist \
+            --column "" \
+            --column "Mirror" \
+            --column "Region" \
+            --column "Location" \
+            --column "Tier" \
+            --column "Download Speed" \
+            --column "Connect" \
+            $(sed -e 's/^/FALSE /' $void_file | tail +2))
+    else
+            DIALOG --title "${BOLD} Important note about Cereus Linux mirrors ${RESET}" --msgbox "$CEREUSMSG" 15 80
+            cereus_mirror=$(cat $cereus_file | fzf --layout=reverse --header-lines=1 --border --border-label="Please select a mirror for Cereus repositories" | awk -F' ' '{ print $1 }')
+            DIALOG --title "${BOLD} Important note about Void Linux mirrors ${RESET}" --msgbox "$VOIDMSG" 15 80
+            void_mirror=$(cat $void_file | fzf --layout=reverse --header-lines=1 --border --border-label="Please select a mirror for Void repositories" | awk -F' ' '{ print $1 }')
+    fi
+
+
 }
 
 change_mirror() {
-    if [ ! -e /etc/xbps.d/ ]; then
-        mkdir -p /etc/xbps.d/
+    if [ ! -e "/etc/xbps.d/" ]; then
+        mkdir -p "/etc/xbps.d/"
     fi
 
-    if [ -n "$cereus_mirror" ]; then
-        cp /usr/share/xbps.d/*cereus*.conf /etc/xbps.d/
-        sed -i 's|https://sourceforge.net/projects/cereus-linux/files/repos/|'"$cereus_mirror"'|g' /etc/xbps.d/*cereus*.conf
+    if [ "$rank_cereus" = "1" ]; then
+        mirrors="$cereus_mirror $void_mirror"
+    else
+        mirrors="$void_mirror"
     fi
 
-    if [ -n "$void_mirror" ]; then
-        cp /usr/share/xbps.d/*repository*.conf /etc/xbps.d/
-        sed -i 's|https://repo-default.voidlinux.org/|'"$void_mirror"'|g' /etc/xbps.d/*repository*.conf     
-    fi
-
-    # Test if selected mirror has debug repository
-    if [ -e /usr/share/xbps.d/20-repository-debug.conf ]; then
-        debug_repo=$(cat /etc/xbps.d/20-repository-debug.conf | cut -d"=" -f2)
-        if ! (wget --spider "$debug_repo/$arch-repodata" 2>/dev/null); then
-            echo "Selected mirror does not have debug repository, falling back to default"
-            rm /etc/xbps.d/20-repository-debug.conf
-        fi
-    fi
-
-    echo "${CLI_BOLD}=> Updating XBPS repositories database...${CLI_RESET}"
-    xbps-install -S
-    read -n 1 -s -r -p "${CLI_BOLD}=> Mirror changed. Press any key to exit...${CLI_RESET}"
-}
-
-change_container_mirror() {
     # If there is a voidnsrun glibc container, also apply changes for it.
     if [ -e /glibc/usr/share/xbps.d ]; then
-        echo "${CLI_BOLD}=> voidnsrun glibc container detected, changing mirrors for it too...${CLI_RESET}"
-        if [ ! -e /glibc/etc/xbps.d/ ]; then
-            mkdir -p /glibc/etc/xbps.d/
+        container="1"
+        syspath="/ /glibc"
+        if [ ! -e "/glibc/etc/xbps.d" ]; then
+            mkdir -p "/glibc/etc/xbps.d"
         fi
+    else
+        echo "no"
+        container="0"
+        syspath="/"
+    fi
 
-        if [ -n "$cereus_mirror" ]; then
-            cp /glibc/usr/share/xbps.d/*cereus*.conf /glibc/etc/xbps.d/
-            sed -i 's|https://sourceforge.net/projects/cereus-linux/files/repos/|'"$cereus_mirror"'|g' /glibc/etc/xbps.d/*cereus*.conf
-        fi
+    for path in $syspath; do
 
-        if [ -n "$void_mirror" ]; then
-            cp /glibc/usr/share/xbps.d/*repository*.conf /glibc/etc/xbps.d/
-            sed -i 's|https://repo-default.voidlinux.org/|'"$void_mirror"'|g' /glibc/etc/xbps.d/*repository*.conf     
-        fi
+    case $path in
+        "/") 
+            sync_repos_cmd="xbps-install -S" 
+            sysname="host system"
+             ;;
+        "/glibc") 
+            sync_repos_cmd="xchroot /glibc xbps-install -S"
+            sysname="container system"
+            ;;
+    esac
+                    
+
+        for mirror in $mirrors; do
+            case $mirror in
+                "$void_mirror")
+                    default_mirror="https://repo-default.voidlinux.org/"
+                    mirror_file="*repository*.conf"
+                    ;;
+                "$cereus_mirror")
+                    default_mirror="https://sourceforge.net/projects/cereus-linux/files/repos/"
+                    mirror_file="*cereus*.conf"
+                    ;;
+            esac
+
+            cp $path/usr/share/xbps.d/$mirror_file $path/etc/xbps.d/
+            sed -i 's|'"$default_mirror"'|'"$mirror"'|g' $path/etc/xbps.d/$mirror_file
+        done
 
         # Test if selected mirror has debug repository
-        if [ -e /glibc/usr/share/xbps.d/20-repository-debug.conf ]; then
-            debug_repo=$(cat /glibc/etc/xbps.d/20-repository-debug.conf | cut -d"=" -f2)
+        if [ -e /usr/share/xbps.d/20-repository-debug.conf ]; then
+            debug_repo=$(cat $path/etc/xbps.d/20-repository-debug.conf | cut -d"=" -f2)
             if ! (wget --spider "$debug_repo/$arch-repodata" 2>/dev/null); then
-                echo "Selected mirror does not have debug repository, falling back to default"
-                rm /glibc/etc/xbps.d/20-repository-debug.conf
+                echo "Selected mirror does not have debug repository for $sysname, falling back to default"
+                rm $path/etc/xbps.d/20-repository-debug.conf
             fi
+        fi
+
+        clear
+        echo "${CLI_BOLD}=> Updating XBPS repositories database in $sysname...${CLI_RESET}"
+        eval "$sync_repos_cmd"
+    done
+    [ $? = 0 ] && DIALOG --title "Success" --msgbox "${BOLD}=> Mirrors changed succesfully!${RESET}" 5 40
+}
+
+detect_removed_mirrors() {
+    local to_reset
+
+    if [ -e /glibc/etc/xbps.d ]; then
+        repo_file_list="/{glibc,}etc/xbps.d/*cereus*.conf"
+        sync_repos_cmd="xchroot /glibc xbps-install -S; xbps-install -S"
+    else
+        repo_file_list="/etc/xbps.d/*cereus*.conf"
+        sync_repos_cmd="xbps-install -S"
     fi
-        xchroot /glibc xbps-install -S
-     fi
+
+    if [ -e /etc/xbps.d/10-cereus-core.conf ] || [ -e /etc/xbps.d/10-cereus-extra.conf ]; then
+        for repo_file in $repo_file_list; do
+            echo "$repo_file"
+            current_mirror="$(cat "$repo_file" | cut -d '=' -f2)"
+            removed_mirrorlist="$(curl -s https://raw.githubusercontent.com/CereusLinuxProject/xrankmirrors/main/removed-mirrors.lst | tail -n +2)"
+            if [ a=$(echo "$removed_mirrorlist" | grep -q -o "$current_mirror") ]; then
+                reset_cereus_mirrors="1"
+                to_reset="$to_reset $repo_file"
+            fi
+        done
+
+        if [ "$reset_cereus_mirrors" = "1" ]; then
+            if [ "$GUI_ENABLE" = "1" ]; then
+                yad --image dialog-warning --window-icon dialog-warning --title "Warning" --text-width=80 --button=yad-ok --timeout=10 --text "Your active Cereus Linux mirror was removed from the official mirrorlist. This means it's no longer operative! \n\nReseting to default mirror!" 
+            else
+                DIALOG --title "${BOLD}Warning${RESET}" --msgbox "Your active Cereus Linux mirror was removed from the official mirrorlist. This means it's no longer operative! \n\n${BOLD}Reseting to default mirror!${RESET}" 10 60
+            fi
+            rm $to_reset
+            eval "$sync_repos_cmd"
+        fi      
+    fi
 }
 
 help() {
@@ -383,6 +557,7 @@ cat <<EOF
       -m   Manually change mirrors on non-interactive mode (requires -v and/or -c)
       -r   Rank/list only specified region mirrors (valid options: AF,AS,EU,NA,OC,SA,World)
       -s   Set fastest mirrors from previous results
+      -u   Manually change mirrors in GUI interactive mode.
       -v   Set Void mirror (only for -m)
 
     files: $void_file $cereus_file
@@ -393,20 +568,20 @@ if [ -z "$1" ]; then
     help; exit 1
 fi
 
-while getopts "c:fghimr:sv:" opt; do
+while getopts "c:fghimr:suv:" opt; do
 case $opt in
     c) cereus_mirror="$OPTARG" ;;
     f) print_results ;;
-    g) run_ranks; print_results ;;
+    g) rank_cereus="1"; unranked="0"; run_ranks; print_results ;;
     h) help; exit 1;;
-    i) xrankfzf ;;
-    m) change_container_mirror; change_mirror ;;
+    i) rank_cereus="1"; GUI_ENABLE="0"; interactive;;
+    m) change_mirror;;
     r) region_sel="$OPTARG";;
     s) set_fastests;;
+    u) rank_cereus="1"; GUI_ENABLE="1"; interactive;;
     v) void_mirror="$OPTARG";;
     *) help; exit 1;;
 esac
 done
 shift $((OPTIND - 1))
-
 

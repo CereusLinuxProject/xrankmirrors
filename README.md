@@ -1,6 +1,14 @@
 # xrankmirrors
 A script to rank and select XBPS mirrors.
 
+<a href="https://codeberg.org/cereus-linux/xrankmirrors">
+    <img alt="Get it on Codeberg" src="https://get-it-on.codeberg.org/get-it-on-white-on-black.png" height="60">
+</a>
+
+The source code is mainly hosted on [Codeberg](https://codeberg.org/cereus-linux/xrankmirrors) with a mirror available on [GitHub](https://github.com/CereusLinuxProject/xrankmirrors). **Issues and pull requests should be made in Codeberg**.
+
+## Usage
+
     usage: xrankmirrors [-c URL] [-f] [-g] [-h] [-i] [-c URL -v URL -m] [-r REGION] [-s] [-v URL]
     -c   Set Cereus mirror (only for -m)
     -f   Print last rank results
